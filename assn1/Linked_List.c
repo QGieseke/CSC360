@@ -19,7 +19,7 @@ struct node {
 //function declarations
 int add_idx (struct node **head, int element, int index);	//add to given index
 int add		(struct node **head, int element);				//add to end of list
-int get		(struct node  *head, int index);					//return given index (non-destructive)
+int get		(struct node  *head, int index);				//return given index (non-destructive)
 int indexOf	(struct node  *head, int element);				//return index of first occurrence of element (non-destructive)
 int isEmpty	(struct node  *head);							//1 if empty, 0 if not
 int del_idx (struct node **head, int index);				//delete (and free) given index
@@ -32,7 +32,8 @@ void print 	(struct node  *head);							//give a one line printout of list conte
 
 int main(){
 
-	//jank, need to learn how to wrap in a function (Tripple deep pointers? I dont think that fixes it (bootstrapping))
+	//jank, need to learn how to wrap in a function (Triple deep pointers? I dont think that fixes it (bootstrapping))
+	//ideally would be a function call (malloc it to heap?).
 	struct node *x = NULL;
 	struct node **head = &x;
 	
@@ -96,7 +97,6 @@ int main(){
 	return (0);
 }
 
-
 int add_idx(struct node **head, int element, int index){
 	int Lsize = size(*head);
 	if(index > Lsize){
@@ -136,12 +136,9 @@ int add_idx(struct node **head, int element, int index){
 	return(-1);
 }
 
-
 int add (struct node **head, int element){
-	printf("add %d\n", element);
-	// if(head = NULL){
-		
-	// }
+	// printf("add %d\n", element);
+
 	
 	if((*head) == NULL){
 		// printf("Null case\n");
@@ -176,7 +173,6 @@ int get (struct node *head, int index){
 	return curr->data;
 }
 
-
 int indexOf(struct node *head, int element){
 	int i = 0;
 	for(struct node *curr = head;; curr = curr->next, i++){
@@ -189,18 +185,17 @@ int indexOf(struct node *head, int element){
 	}
 	return (NULL);
 }
-
  
 int isEmpty (struct node *head){
 	return ((head == NULL));
 }
-
 
 int del_idx(struct node **head, int index){
 	int Lsize = size(*head);
 	if (index > Lsize){
 		printf("given index (%d) is to large for given list size (%d)", index, Lsize);
 		return(NULL);
+		
 	} else if (index == Lsize){
 		struct node *curr = *head;
 		for(; curr->next != NULL; curr = curr->next);
@@ -208,6 +203,7 @@ int del_idx(struct node **head, int index){
 		curr->prev->next = NULL;
 		free(curr);
 		return(val);
+		
 	} else if (index == 0){
 		int val = (*head)->data;
 		if(Lsize == 1){
@@ -228,9 +224,9 @@ int del_idx(struct node **head, int index){
 		free(curr);
 		return (val);
 	}
+	
 	return(NULL);
 }
-
 
 int del_val(struct node **head, int element){
 	//manually check head, if we have to update pointer
@@ -262,7 +258,6 @@ int del_val(struct node **head, int element){
 	return(NULL);
 }
 
-
 int clear(struct node **head){
 	//trivial case
 	if((*head) == NULL){
@@ -285,13 +280,11 @@ int clear(struct node **head){
 	return(0);
 }
 
-
 int size(struct node *head){
 	int i = 0;
 	for(struct node *curr = head; curr != NULL; curr = curr->next, i++);
 	return i;
 }
-
 
 void print(struct node *head){
 	struct node *curr = head;
