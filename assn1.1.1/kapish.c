@@ -52,25 +52,64 @@ int loop(){
 	printf("? ");
 
 	while (fgets(cmd, 512, stdin) != NULL){
-		printf("cmd is |%s|\n", cmd);
+		memset(args, 0, 512);	
+
+		//printf("cmd is |%s|\n", cmd);
+		parse_cmd(&cmd, &args);
+		//printf("cmd is |%s|\n", cmd);
+		if(strcmp(cmd, "setenv") == 0){
+			printf("setenv\n");
+		} else if (strcmp(cmd, "unsetenv") ==0){
+			printf("unsetenv\n");
+		}else if (strcmp(cmd, "cd") == 0){
+			printf("cd\n");
+		} else if (strcmp(cmd, "exit") == 0){
+			printf("exiting\n");
+			return 0;
+		}
+
 		exec(cmd, args);
 		printf("? ");
+		free_args(&args);
 	}
 
 
 
 }
 
-int parse_cmd(char * cmd, char** args[]){
-	char buf_cmd[512] = *cmd;
-	delim = " \n"; //space and newline
-	//*cmd = strtok(buf_cmd, delim);
-	strncpy(*cmd, strtok(buf_cmd, delim), 512);
+
+
+int free_args(char **args[]){
 	int i = 0;
-	token = strtok(NULL, delim);
+	for (; i < 512 && (args)[i] != 0; i++){
+		free((args)[i]);
+	}
+
+}
+
+
+int parse_cmd(char * cmd, char** args[]){
+	char buf_cmd[512] = {0};
+	strncpy(buf_cmd, cmd, 512);
+	//printf("Copied cmd is |%s|\n", buf_cmd);
+
+	char *delim = " \n"; //space and newline
+	//*cmd = strtok(buf_cmd, delim);
+	char *tmp_cmd = strtok(buf_cmd, delim);
+	strncpy(cmd, tmp_cmd, 512);
+	args[0] = strncpy((char *) malloc (strlen(tmp_cmd) * sizeof(char)), tmp_cmd, strlen(tmp_cmd));
+	//printf("replaced cmd is |%s|\n", cmd);
+	int i = 1;
+	char *token = strtok(NULL, delim);
 	while (token != NULL) {
 		//*args[i] = token;
-		strncpy(args[i], token, 512);
+	//	printf("token is |%s|\n", token);
+		int len = strlen(token);
+		char *cpy = (char *) malloc(len * sizeof(char));
+		strncpy(cpy, token, len);
+		//printf("Copied token is |%s|\n",cpy); 
+		args[i] = cpy;
+		//printf("Placed pointer in array |%p|\n", *args[i]);
 		i++;
 		token = strtok(NULL, delim);
 	}
