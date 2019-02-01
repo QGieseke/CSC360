@@ -3,10 +3,16 @@
 #include<sys/types.h>
 #include<unistd.h>
 #include<string.h>
+#include<signal.h>
 
 int init();
-int exec(char * cmd, char* args[]);
 int loop();
+int free_args(char **args[]);
+int parse_cmd(char *cmd, char**args[]);
+int exec(char * cmd, char* args[]);
+void handle_sigint(int sig);
+
+int cid;
 
 int main(int argc, const char*argv[]){
 //	for(int i = 0; i < argc; i++){
@@ -16,12 +22,12 @@ int main(int argc, const char*argv[]){
 
 	
 	init();
-
+	signal(SIGINT, handle_sigint);
 	char *args[512] = {""};
 	exec("pwd", args);
 	exec("ls", args);
 	loop();
-
+	return(0);
 }
 
 int init(){
@@ -44,6 +50,7 @@ int init(){
 		
 		printf("%s", cmd);		//replace with exec later
 	}
+	return(0);
 }
 
 int loop(){
@@ -52,19 +59,40 @@ int loop(){
 	printf("? ");
 
 	while (fgets(cmd, 512, stdin) != NULL){
+		
+		
 		memset(args, 0, 512);	
-
+		if (strcmp(cmd, "\n") == 0){
+			printf("? ");
+			continue;
+		}
 		//printf("cmd is |%s|\n", cmd);
-		parse_cmd(&cmd, &args);
+		parse_cmd(cmd, &args);
 		//printf("cmd is |%s|\n", cmd);
 		if(strcmp(cmd, "setenv") == 0){
-			printf("setenv\n");
+			//printf("setenv\n");
+			char *val = "";
+			if(args[2] != 0) val = args[2];
+			setenv(args[1], val, 1);
+			printf("? ");
+			continue;
 		} else if (strcmp(cmd, "unsetenv") ==0){
-			printf("unsetenv\n");
+			//printf("unsetenv\n");
+			unsetenv(args[1]);
+			printf("? ");
+			continue;
 		}else if (strcmp(cmd, "cd") == 0){
-			printf("cd\n");
+			//printf("cd\n");
+			char * dir = getenv("HOME");
+			if (args[1] != 0) dir = args[1];
+			chdir(dir);
+			char *tmp[1] = {""};
+			exec("pwd", tmp);
+			printf("? ");
+			continue;
 		} else if (strcmp(cmd, "exit") == 0){
 			printf("exiting\n");
+			free_args(&args);
 			return 0;
 		}
 
@@ -72,9 +100,7 @@ int loop(){
 		printf("? ");
 		free_args(&args);
 	}
-
-
-
+	return(0);
 }
 
 
@@ -84,7 +110,7 @@ int free_args(char **args[]){
 	for (; i < 512 && (args)[i] != 0; i++){
 		free((args)[i]);
 	}
-
+	return(0);
 }
 
 
@@ -114,21 +140,32 @@ int parse_cmd(char * cmd, char** args[]){
 		token = strtok(NULL, delim);
 	}
 	
-
+	return(0);
 }
 
 
 int exec(char *cmd, char* args[]){
 	
-	int id = fork();
+	cid = fork();
 
 	//if(builtin){
-	if(id == 0){
+	if(cid == 0){
 		execvp(cmd, args);
 	} else {
 		wait();
 	}
+	cid = 0;
 	return 0;
 
 }
+
+void handle_sigint(int sig){
+	//printf("Handling sigint\n");
+	if(cid != 0){ 
+		printf("c: %d, mine: %d\n", cid, getpid());	
+		kill(cid, SIGTERM);	
+	}
+	//printf("? ");
+}
+
 
