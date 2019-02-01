@@ -7,9 +7,9 @@
 
 int init();
 int loop();
-int free_args(char **args[]);
-int parse_cmd(char *cmd, char**args[]);
-int exec(char * cmd, char* args[]);
+int free_args(char **args);
+int parse_cmd(char *cmd, char**args);
+int exec(char * cmd, char** args);
 void handle_sigint(int sig);
 
 int cid;
@@ -67,7 +67,7 @@ int loop(){
 			continue;
 		}
 		//printf("cmd is |%s|\n", cmd);
-		parse_cmd(cmd, &args);
+		parse_cmd(cmd, args);
 		//printf("cmd is |%s|\n", cmd);
 		if(strcmp(cmd, "setenv") == 0){
 			//printf("setenv\n");
@@ -92,20 +92,20 @@ int loop(){
 			continue;
 		} else if (strcmp(cmd, "exit") == 0){
 			printf("exiting\n");
-			free_args(&args);
+			free_args(args);
 			return 0;
 		}
 
 		exec(cmd, args);
 		printf("? ");
-		free_args(&args);
+		free_args(args);
 	}
 	return(0);
 }
 
 
 
-int free_args(char **args[]){
+int free_args(char **args){
 	int i = 0;
 	for (; i < 512 && (args)[i] != 0; i++){
 		free((args)[i]);
@@ -114,7 +114,7 @@ int free_args(char **args[]){
 }
 
 
-int parse_cmd(char * cmd, char** args[]){
+int parse_cmd(char * cmd, char** args){
 	char buf_cmd[512] = {0};
 	strncpy(buf_cmd, cmd, 512);
 	//printf("Copied cmd is |%s|\n", buf_cmd);
@@ -129,13 +129,13 @@ int parse_cmd(char * cmd, char** args[]){
 	char *token = strtok(NULL, delim);
 	while (token != NULL) {
 		//*args[i] = token;
-	//	printf("token is |%s|\n", token);
+		//printf("token is |%s|\n", token);
 		int len = strlen(token);
 		char *cpy = (char *) malloc(len * sizeof(char));
 		strncpy(cpy, token, len);
 		//printf("Copied token is |%s|\n",cpy); 
 		args[i] = cpy;
-		//printf("Placed pointer in array |%p|\n", *args[i]);
+		//printf("Placed pointer in array |%p|\n", args[i]);
 		i++;
 		token = strtok(NULL, delim);
 	}
@@ -144,10 +144,10 @@ int parse_cmd(char * cmd, char** args[]){
 }
 
 
-int exec(char *cmd, char* args[]){
+int exec(char *cmd, char** args){
 	
 	cid = fork();
-
+	
 	//if(builtin){
 	if(cid == 0){
 		execvp(cmd, args);
@@ -160,12 +160,12 @@ int exec(char *cmd, char* args[]){
 }
 
 void handle_sigint(int sig){
-	//printf("Handling sigint\n");
+	//printf("\n");
 	if(cid != 0){ 
-		printf("c: %d, mine: %d\n", cid, getpid());	
+		//printf("c: %d, mine: %d\n", cid, getpid());	
 		kill(cid, SIGTERM);	
 	}
-	//printf("? ");
+	
 }
 
 
