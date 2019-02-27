@@ -108,7 +108,6 @@ int loop(){
 }
 
 
-
 int free_args(char **args){
 	int i = 0;
 	for (; i < 512 && (args)[i] != 0; i++){
@@ -155,7 +154,6 @@ int parse_cmd(char * cmd, char** args){
 	return(0);
 }
 
-
 int exec(char *cmd, char** args){
 	
 	cid = fork();
@@ -179,5 +177,3 @@ void handle_sigint(int sig){
 		printf("\n");	
 	}
 }
-
-

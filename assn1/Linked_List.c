@@ -224,7 +224,7 @@ int del_idx(struct node **head, int index){
 		free(curr);
 		return (val);
 	}
-	
+	mmm
 	return(NULL);
 }
 
