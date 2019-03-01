@@ -16,15 +16,14 @@ int histogram [MAX_ITEMS+1]; // histogram [i] == # of times list stored i items
 
 int items = 0;
 
-spinlock_t lock;
-spinlock_t full;
-spinlock_t empty;
+uthread_mutex_t lock;
+
 
 void* producer (void* v) {
   printf("producer started\n");
   for (int i=0; i<NUM_ITERATIONS; i++) {
     	// TODO
-	spinlock_lock(&lock);
+	uthread_mutex_lock(lock);
 	
 	if(items < MAX_ITEMS){
 		items++;
@@ -34,7 +33,7 @@ void* producer (void* v) {
 		i--;
 		producer_wait_count++;
 	}
-	spinlock_unlock(&lock);
+	uthread_mutex_unlock(lock);
 	
   }
   return NULL;
@@ -45,7 +44,7 @@ void* consumer (void* v) {
   for (int i=0; i<NUM_ITERATIONS; i++) {
     	// TODO
 	
-	spinlock_lock(&lock);
+	uthread_mutex_lock(lock);
 	if(items > 0) {
 		items--;
 		printf("%d ", items);
@@ -54,13 +53,13 @@ void* consumer (void* v) {
 		i--;	
 		consumer_wait_count++;
 	}
-	spinlock_unlock(&lock);
+	uthread_mutex_unlock(lock);
   }
   return NULL;
 }
 
 int main (int argc, char** argv) {
-  spinlock_create(&lock);
+  lock = uthread_mutex_create();
   uthread_t t[NUM_PRODUCERS + NUM_CONSUMERS];
 
   uthread_init (NUM_PRODUCERS+NUM_CONSUMERS);
@@ -69,9 +68,9 @@ int main (int argc, char** argv) {
   for(int i = 0; i < NUM_CONSUMERS + NUM_PRODUCERS; i++){
 	printf("creating %d\n", i);
 	if(i < NUM_CONSUMERS){
-		t[i] = (uthread_t) uthread_create(producer, NULL);
+		t[i] =  uthread_create(producer, NULL);
 	} else {
-		t[i] = (uthread_t) uthread_create(consumer, NULL);
+		t[i] =  uthread_create(consumer, NULL);
 	}
   }
   
