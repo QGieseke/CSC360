@@ -176,7 +176,7 @@ int main (int argc, char** argv) {
   assert (signal_count [MATCH]   == smoke_count [MATCH]);
   assert (signal_count [PAPER]   == smoke_count [PAPER]);
   assert (signal_count [TOBACCO] == smoke_count [TOBACCO]);
-  assert (smoke_count [MATCH] + smoke_count [PAPER] + smoke_count [TOBACCO] == NUM_ITERATIONS * 2t );
+  assert (smoke_count [MATCH] + smoke_count [PAPER] + smoke_count [TOBACCO] == NUM_ITERATIONS * 2 );
   printf ("Smoke counts: %d matches, %d paper, %d tobacco\n",
           smoke_count [MATCH], smoke_count [PAPER], smoke_count [TOBACCO]);
 }
