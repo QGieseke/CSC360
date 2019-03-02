@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include "uthread.h"
 #include "uthread_mutex_cond.h"
+#include "uthread_sem.h"
 
 #define NUM_ITERATIONS 1000
 #define SMOKE_COUNT 10
@@ -17,30 +18,24 @@
 
 struct Agent {
   uthread_mutex_t mutex;
-  uthread_cond_t  match;
-  uthread_cond_t  paper;
-  uthread_cond_t  tobacco;
+  uthread_cond_t  MT;
+  uthread_cond_t  MP;
+  uthread_cond_t  PT;
   uthread_cond_t  smoke;
+  uthread_sem_t  init;
 };
 
 struct Agent* createAgent() {
   struct Agent* agent = malloc (sizeof (struct Agent));
   agent->mutex   = uthread_mutex_create();
-  agent->paper   = uthread_cond_create (agent->mutex);
-  agent->match   = uthread_cond_create (agent->mutex);
-  agent->tobacco = uthread_cond_create (agent->mutex);
+  agent->MT   = uthread_cond_create (agent->mutex);
+  agent->PT   = uthread_cond_create (agent->mutex);
+  agent->MP   = uthread_cond_create (agent->mutex);
   agent->smoke   = uthread_cond_create (agent->mutex);
+  agent->init    = uthread_sem_create(1);
   return agent;
 }
 
-/*
-struct Smoker {
-	int M = 0;
-	int P = 0;
-	int T = 0;
-	struct Angent* A;
-};
-*/
 /**
  * You might find these declarations helpful.
  *   Note that Resource enum had values 1, 2 and 4 so you can combine resources;
@@ -55,36 +50,49 @@ int smoke_count  [5];  // # of times smoker with resource smoked
 
 
 void* SmokerM(void* av){
+	VERBOSE_PRINT("M created\n");
 	struct Agent* a = av;
-	for(int i = 0; i < SMOKE_COUNT; i++ ){
+	while(1){
 		uthread_mutex_lock(a->mutex);
 		VERBOSE_PRINT ("M\n");
-		uthread_cond_wait(a->paper);
-		uthread_cond_wait(a->tobacco);
+		uthread_sem_signal(a->init);
+		uthread_cond_wait(a->PT);
+		VERBOSE_PRINT ("M smoked\n");
+		smoke_count[PAPER]++;
+		smoke_count[TOBACCO]++;
 		uthread_cond_signal(a->smoke);
 		uthread_mutex_unlock(a->mutex);
 	}
 }
 
 void* SmokerP(void* av){
+	VERBOSE_PRINT("P created\n");
 	struct Agent* a = av;
-	for(int i = 0; i < SMOKE_COUNT; i++){
-		VERBOSE_PRINT ("P\n");
+	while(1){
 		uthread_mutex_lock(a->mutex);
-		uthread_cond_wait(a->tobacco);
-		uthread_cond_wait(a->match);
+		VERBOSE_PRINT ("P\n");
+		uthread_sem_signal(a->init);
+		uthread_cond_wait(a->MT);
+		VERBOSE_PRINT("P smoked\n");
+		smoke_count[MATCH]++;
+		smoke_count[TOBACCO]++;
 		uthread_cond_signal(a->smoke);
 		uthread_mutex_unlock(a->mutex);
 	}
 }
 
 void* SmokerT(void* av){
+	VERBOSE_PRINT("T created\n");
 	struct Agent* a=av;
-	for(int i = 0; i < SMOKE_COUNT; i++){
-		VERBOSE_PRINT ("T\n");
+	while(1){
+		//uthread_mutex_unlock(a->init);
 		uthread_mutex_lock(a->mutex);
-		uthread_cond_wait(a->match);
-		uthread_cond_wait(a->paper);
+		VERBOSE_PRINT ("T\n");
+		uthread_sem_signal(a->init);
+		uthread_cond_wait(a->MP);
+		VERBOSE_PRINT("T smoked\n");
+		smoke_count[MATCH]++;
+		smoke_count[PAPER]++;
 		uthread_cond_signal(a->smoke);
 		uthread_mutex_unlock(a->mutex);
 	}
@@ -97,30 +105,58 @@ void* SmokerT(void* av){
  */
 void* agent (void* av) {
   struct Agent* a = av;
-  static const int choices[]         = {MATCH|PAPER, TOBACCO|MATCH, PAPER|TOBACCO};
-  static const int matching_smoker[] = {TOBACCO,     PAPER,         MATCH};
   
-  uthread_mutex_lock (a->mutex);
+      VERBOSE_PRINT("Agent loop starting\n");
+      //uthread_mutex_lock(a->mutex);
+	uthread_sem_wait(a->init);
+      uthread_cond_t M = uthread_create(SmokerM, a);
+	VERBOSE_PRINT("Waiting on M\n");
+	uthread_sem_wait(a->init);
+      uthread_cond_t P = uthread_create(SmokerP, a);
+	VERBOSE_PRINT("Waiting on P\n");
+	uthread_sem_wait(a->init);
+      uthread_cond_t T = uthread_create(SmokerT, a);
+	VERBOSE_PRINT("Waiting on T\n");
+	uthread_sem_wait(a->init);
+
+      VERBOSE_PRINT("Threads created\n");
     for (int i = 0; i < NUM_ITERATIONS; i++) {
       int r = random() % 3;
-      signal_count [matching_smoker [r]] ++;
-      int c = choices [r];
-      if (c & MATCH) {
-        VERBOSE_PRINT ("match available\n");
-        uthread_cond_signal (a->match);
+//	sleep(1);
+      //uthread_mutex_lock(a->init);
+      uthread_mutex_lock (a->mutex);
+      if (r==0) {
+        VERBOSE_PRINT ("match Paper available\n");
+        uthread_cond_signal(a->MP);
+	signal_count[MATCH]++;
+	signal_count[PAPER]++;
       }
-      if (c & PAPER) {
-        VERBOSE_PRINT ("paper available\n");
-        uthread_cond_signal (a->paper);
+      if (r==1) {
+        VERBOSE_PRINT ("paper Tobacco available\n");
+	uthread_cond_signal(a->PT);
+	signal_count[PAPER]++;
+	signal_count[TOBACCO]++;
       }
-      if (c & TOBACCO) {
-        VERBOSE_PRINT ("tobacco available\n");
-        uthread_cond_signal (a->tobacco);
+      if (r==2) {
+        VERBOSE_PRINT ("tobacco Match available\n");
+	uthread_cond_signal(a->MT);
+	signal_count[MATCH]++;
+	signal_count[TOBACCO]++;
       }
       VERBOSE_PRINT ("agent is waiting for smoker to smoke\n");
       uthread_cond_wait (a->smoke);
+      VERBOSE_PRINT ("Smoke recieved, destroying\n");
+      //uthread_destroy(M);
+      //uthread_destroy(P);
+      //uthread_destroy(T);
+      //sleep(1);
+	VERBOSE_PRINT("threads destroyed\n");
+
+	uthread_sem_signal(a->init);
+	
+      uthread_mutex_unlock (a->mutex);
+      //uthread_mutex_unlock(a->init);
     }
-  uthread_mutex_unlock (a->mutex);
   return NULL;
 }
 
@@ -128,19 +164,19 @@ int main (int argc, char** argv) {
   uthread_init (7);
   struct Agent*  a = createAgent();
   // TODO
-  uthread_t A = uthread_create(agent, a);
-  uthread_t M = uthread_create(SmokerM, a);
-  uthread_t P = uthread_create(SmokerP, a);
-  uthread_t T = uthread_create(SmokerT, a);
   //uthread_t A = uthread_create(agent, a);
-  uthread_join(A, 0);
-  uthread_join(M, NULL);
-  uthread_join(P, NULL);
-  uthread_join(T, NULL);
+  //uthread_t M = uthread_create(SmokerM, a);
+  //uthread_t P = uthread_create(SmokerP, a);
+  //uthread_t T = uthread_create(SmokerT, a);
+  uthread_t A = uthread_create(agent, a);
+  uthread_join(A, NULL);
+  //uthread_join(M, NULL);
+  //uthread_join(P, NULL);
+  //uthread_join(T, NULL);
   assert (signal_count [MATCH]   == smoke_count [MATCH]);
   assert (signal_count [PAPER]   == smoke_count [PAPER]);
   assert (signal_count [TOBACCO] == smoke_count [TOBACCO]);
-  assert (smoke_count [MATCH] + smoke_count [PAPER] + smoke_count [TOBACCO] == NUM_ITERATIONS);
+  assert (smoke_count [MATCH] + smoke_count [PAPER] + smoke_count [TOBACCO] == NUM_ITERATIONS * 2t );
   printf ("Smoke counts: %d matches, %d paper, %d tobacco\n",
           smoke_count [MATCH], smoke_count [PAPER], smoke_count [TOBACCO]);
 }
