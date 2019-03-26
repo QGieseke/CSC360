@@ -15,7 +15,7 @@ char* read_block(int blocknum, char* block_buf);
 
 //char block_buf[512];
 
-
+/*
 int main(){
 	
 	printf("Starting test\n");
@@ -40,6 +40,7 @@ int main(){
 	printf("Block 100:%s\n", read_block(100, read_block_buf));
 	return 0;
 }
+*/
 
 int init(){
 //	printf("creating file\n");
