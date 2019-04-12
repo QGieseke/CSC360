@@ -1,3 +1,7 @@
+#include<stdlib.h>
+#include<stdio.h>
+#include<string.h>
+
 #include "file.h"
 
 int main(){
@@ -11,15 +15,17 @@ int main(){
 	rmdir("/test2/test2.2");
 	rmdir("/test2");
 	
-	FILE *f = fopen("test.txt", r);
+	FILE *f = fopen("test.txt", "r");
 	
 	write_file("test1/test1.1/test_file.txt", f);
 	write_file("test1/test_file2.txt", f);
-	
+	fclose(f);
+
 	read_file("test1/test1.1/test_file.txt");
 	read_file("test1/test_file2.txt");
 	
-	del_file("test1/test1.1/test_file.txt")
+	del_file("test1/test1.1/test_file.txt");
+	
 	return 0;
 }
 
@@ -52,7 +58,7 @@ int init_fs(){
 	
 	struct dir* root_dir = (struct dir*) malloc(sizeof(struct dir));
 	root_dir->inode_num[0] = 10;
-	strncat(".", root_dir->filename[0]);
+	strncat(".", root_dir->filename[0], NAMESIZE);
 	
 	write_block(root_block, (char *) root_dir);
 	claim_block(root_block);
@@ -87,15 +93,15 @@ int write_file(char *path, FILE *f){
 	
 	//find empty entry in parent dir or overwrites existing file of same name
 	int i;
-	for (i = 1; i < 16 || inode_num[i] == 0 || strncmp(filename, parentDir->filename[i], NAMESIZE) != 0; i++);
+	for (i = 1; i < 16 || parentDir->inode_num[i] == 0 || strncmp(filename, parentDir->filename[i], NAMESIZE) != 0; i++);
 	if(i == 16){
 		printf("Directory %s is full, cannot add new file.\n", pathname);
 		return -1;
 	}
 	
 	//delete old copy if it exists
-	if(inode_num[i] != 0){
-		del_file(char *path);
+	if(parentDir->inode_num[i] != 0){
+		del_file(path);
 	}
 	
 	//get new inode for the new file
@@ -145,7 +151,7 @@ int write_file(char *path, FILE *f){
 	
 	//double indirect
 	struct indirection_block* dib_buf = (struct indirection_block*) malloc(sizeof(indirection_block));
-	tblock = get_block();
+	t_block = get_block();
 	if(t_block == -1) return -1;
 	nfileInode->DI_block = t_block;
 	
@@ -170,7 +176,7 @@ int write_file(char *path, FILE *f){
 		claim_block(dib_buf->block[i]);
 		free(ib_buf);
 	}
-	write_block(nfileInode->DI_block, dib_buf);
+	write_block(nfileInode->DI_block, (char *) dib_buf);
 	claim_block(nfileInode->DI_block);
 	free(dib_buf);
 	
@@ -220,7 +226,7 @@ int read_file(char *path){
 	
 	
 	//read direct, terminate on 0
-	int i;
+	;
 	for(i = 0; i < 10; i++){
 		if(f_inode->di_blocks[i] == 0) break;
 		read_block(f_inode->di_blocks[i], block_buf);
@@ -235,7 +241,7 @@ int read_file(char *path){
 	read_block(f_inode->I_block, (char *) ib_buf);
 	for(i = 0; i < 256; i++){
 		if(ib_buf->block[i] == 0) break;
-		read_block(ib_buf->blocks[i], block_buf);
+		read_block(ib_buf->block[i], block_buf);
 		fwrite(block_buf, BLOCKSIZE, 1, f);
 	}
 	if(ib_buf->block[i] == 0){
@@ -251,7 +257,7 @@ int read_file(char *path){
 			fclose(f);
 			return 0;
 		}
-		read_block(dib_buf->block[i], ib_buf);
+		read_block(dib_buf->block[i], (char *) ib_buf);
 		int j;
 		for(j = 0; j < 256; j++){
 			if(ib_buf->block[j] == 0) return 0;
@@ -302,13 +308,13 @@ int mkdir(char *path){
 	short dirBlock = get_block(); 
 	
 	//get new directory data block
-	struct inode* curdir = (struct dir*) malloc(sizeof(struct dir));
-	struct inode dirInode = read_inode(dirInodeIndex);
+	struct dir* curdir = (struct dir*) malloc(sizeof(struct dir));
+	struct inode* dirInode = read_inode(dirInodeIndex);
 	
 	//set values for new directory datablock and inode
 	dirInode->size = BLOCKSIZE;
 	dirInode->di_blocks[0] = dirBlock;
-	dirInode->flags = 1
+	dirInode->flags = 1;
 	
 	curdir->inode_num[0] = dirInodeIndex;
 	strncpy(".", curdir->filename[0], NAMESIZE);
@@ -329,14 +335,14 @@ int mkdir(char *path){
 	
 	//fill empty entry in parent dir with proper data
 	parentDir->inode_num[i] = dirInodeIndex;
-	strncpy(filename, parentDir->filename[i], NAMESIZE)
+	strncpy(filename, parentDir->filename[i], NAMESIZE);
 	
 	
 	//write new dir changes to disk
 	write_block(dirBlock, (char *) curdir);
 	claim_block(dirBlock);
 	write_inode(dirInode, dirInodeIndex);
-	claim_inode(dirInode);
+	claim_inode(dirInodeIndex);
 	
 	//write updated parent to disk
 	write_block(parentInode->di_blocks[0], (char*) parentDir);
@@ -344,7 +350,7 @@ int mkdir(char *path){
 	//free heap memory (any explicit malloc, or calls to read_inode/getfile_inode return dynamic)
 	free(curdir);
 	free(dirInode);
-	free(parentInode)
+	free(parentInode);
 	return 0;
 }
 
@@ -386,22 +392,22 @@ int rmdir(char *path){
 	
 	//update parent
 	parentDir->inode_num[i] = 0;
-	parentDir->filename[i] = "";
+	parentDir->filename[i][0] = 0;
 	
-	write_block(parentInode->di_blocks[0], parentDir);
+	write_block(parentInode->di_blocks[0], (char *) parentDir);
 	
 	//update free vectors
 	free_inode(inode_index_to_free);
 	
 	//free direct blocks, terminate whole deletion on 0 vector (file done)
-	for(int i = 0; i < 10; i++){
+	for(i = 0; i < 10; i++){
 		if(inode_to_free->di_blocks[i] == 0) return 0;
 		free_block(inode_to_free->di_blocks[i]);
 	}
 	//free single indirect, terminate on 0
 	struct indirection_block* ib_buf;
 	read_block(inode_to_free->I_block, (char *) ib_buf);
-	for(int i = 0; i < 256; i++){
+	for(i = 0; i < 256; i++){
 		if(ib_buf->block[i] == 0) return 0;
 		free_block(ib_buf->block[i]);
 	}
@@ -411,7 +417,7 @@ int rmdir(char *path){
 	read_block(inode_to_free->DI_block, (char*) dib_buf);
 	for(int i = 0; i < 256; i++){
 		if(dib_buf->block[i] == 0) return 0;
-		read_block(dib_buf->block[i], ib_buf);
+		read_block(dib_buf->block[i], (char *) ib_buf);
 		for(int j = 0; j < 256; j++){
 			if(ib_buf->block[j] == 0) return 0;
 			free_block(ib_buf->block[j]);

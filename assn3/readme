@@ -1,0 +1,10 @@
+Hello and welcome to my "filesystem"
+
+For the basics, its laid out in UNIX style with the following block layout:
+Blocknum	What it is
+0		Superblock
+1		Free block vector
+2-9		Inodes (16 per)
+10-4096		Data blocks
+
+

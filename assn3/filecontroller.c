@@ -1,3 +1,4 @@
+#include <string.h>
 #include "filecontroller.h"
 
 //more comments in header file
@@ -35,7 +36,7 @@ short free_block(short block_num){
 }
 
 char get_inode(){
-	read_block(0, superblock_buf);
+	read_block(0, (char*) superblock_buf);
 	
 	char i;
 	for(i = 0; !(superblock_buf->inode_free[i/8] >> i%8 & 1) || i < NUM_INODES; i++);
@@ -44,20 +45,20 @@ char get_inode(){
 }
 
 char claim_inode(char inode_num){
-	read_block(0, superblock_buf);
+	read_block(0, (char *) superblock_buf);
 
 	if((superblock_buf->inode_free[inode_num/8] >> (inode_num/8))&1) return -1;
 	superblock_buf->inode_free[inode_num/8] = superblock_buf->inode_free[inode_num/8] | (1<<(inode_num%8));
-	write_block(0, superblock_buf);
+	write_block(0, (char *) superblock_buf);
 	return 0;
 }
 
 char free_inode(char inode_num){
-	read_block(0, superblock_buf);
+	read_block(0, (char *) superblock_buf);
 
 	if((!superblock_buf->inode_free[inode_num/8] >> (inode_num/8))&1) return -1;
 	superblock_buf->inode_free[inode_num/8] = superblock_buf->inode_free[inode_num/8] & (~(1<<(inode_num%8)));
-	write_block(0, superblock_buf);
+	write_block(0, (char *) superblock_buf);
 	return 0;
 }
 
@@ -65,16 +66,17 @@ char free_inode(char inode_num){
 struct inode* read_inode(char inode_num){
 	read_block((inode_num/8) + 2, block_buf);
 	struct inode* r_inode = (struct inode*) malloc(sizeof(struct inode));
-	inode inode_vec[16] = (struct inode*) block_buf;	//cast block to inode array
-	*r_inode = inode_vec[inode_num%16];		//return inode at wanted index
+	struct inode_vec* V = (struct inode_vec*) block_buf;
+	//inode_vec = (struct inode *) block_buf;	//cast block to inode array
+	*r_inode = V->vec[inode_num%16];		//return inode at wanted index
 	return r_inode;
 }
 
 char write_inode(struct inode* inode_write, char inode_num){
 	read_block((inode_num/8)+2, block_buf);
-	inode inode_vec[16] = (struct inode*) block_buf;
-	inode_vec[inode_num%16] = inode_write;
-	write_block((inode_num/8)+2, (char *) inode_vec);
+	struct inode_vec *V = (struct inode_vec*) block_buf;
+	V->vec[inode_num%16] = *inode_write;
+	write_block((inode_num/8)+2, (char *) V);
 	return 0;
 }
 
@@ -107,7 +109,7 @@ struct inode* getfile_inode(char *path, char* inode_index){
 				*inode_index = curdir->inode_num[i];
 				inode_buf = read_inode(*inode_index);
 				if(inode_buf->flags == 0) return inode_buf;	//is a file, return its inode
-				read_block(inode_buf->di_blocks[0], (char *)curdir)	//is a dir, go inside
+				read_block(inode_buf->di_blocks[0], (char *)curdir);	//is a dir, go inside
 				break;
 			}
 		}

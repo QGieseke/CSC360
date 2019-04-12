@@ -1,4 +1,4 @@
-#inlcude "diskcontroller.h"
+#include "diskcontroller.h"
 
 int init(){
 	FILE *f = fopen("./vdisk", "wb");

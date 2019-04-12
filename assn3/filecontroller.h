@@ -9,6 +9,10 @@ struct inode{
 	short DI_block;		//double indirection block
 } inode;
 
+struct inode_vec{
+	struct inode vec[16];
+};
+
 struct dir{
 	char inode_num[16];	//the number of the inode
 	char filename[16][NAMESIZE];	//filename (16 strings (max length 31 char)
@@ -49,7 +53,7 @@ struct inode* 	getfile_inode(char *path, char* inode_index);
 
 
 //useful buffers and other things (I could be more efficient with fewer reads since these are buffered and this is single threaded, but hey I dont want to go through and think about it so better safe than sorry)
-char* delim = '/';
+char* delim = "/";
 char free_vector [BLOCKSIZE] = {0};
 char block_buf[BLOCKSIZE] = {0};
 struct dir* root;

@@ -1,5 +1,5 @@
 #include "filecontroller.c"
-
+#include<string.h>
 
 int mkdir(char *path);
 int rmdir(char *path);
@@ -11,4 +11,4 @@ int del_file(char *path);
 
 int init_fs();
 
-tree();
+//tree();
